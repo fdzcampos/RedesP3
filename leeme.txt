@@ -1,1 +1,23 @@
-TOMAA EL TXT LOKOH 
+Autores: Inés Fernández Campos y Javier Encinas Cortés
+
+###### MODIFICAR PARA ENTREGA PRACTICA 3 #############################
+Comentario: En caso de que un campo no coincida con el filtro, se imprimirá ese campo y acto seguido se dejará de imprimir el resto de campos de ese nivel y de los siguientes.
+
+Criterios de evaluacion:
+	- Normativa de entrega cumplida en su totalidad: Realizado, varias lecturas del enunciado.
+
+	- Impresión información de nivel 2: Realizado.
+	
+	- Impresión información pertinentes de nivel 3: Realizado.
+
+	- Impresión campo desplazamiento/offset: Realizado.
+	
+	- Impresión información de nivel 4: Realizado.
+
+	- Captura desde interfaz de red: Realizado.
+
+	- No analizar tráfico cruzado: Realizado, comprobación de que el número de protocolo es o 6 o 17.
+
+	- Implementación funcionalidad de filtrado: Realizado, se ha incluido una variable global que se usa de flag para comprobar la existencia de los filtros de IP origen o destino.
+
+	- Detección de filtros: Realizado, se imprimen por pantalla los campos deseados hasta que uno no coincide.

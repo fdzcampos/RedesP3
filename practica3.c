@@ -4,7 +4,7 @@
 Compila con warning pues falta usar variables y modificar funciones
  
  Compila: make
- Autor: Jose Luis Garcia Dorado, Jorge E. Lopez de Vergara Mendez
+ Autor: Jose Luis Garcia Donado, Jorge E. Lopez de Vergara Mendez
  2018 EPS-UAM v1
 ***************************************************************************/
 
@@ -20,7 +20,8 @@ pcap_dumper_t * pdumper;//y salida a pcap
 uint64_t cont=0;	//Contador numero de mensajes enviados
 char interface[10];	//Interface donde transmitir por ejemplo "eth0"
 uint16_t ID=1;		//Identificador IP
-
+uint16_t ID_ICMP=1; //Campo identificador ICMP
+uint16_t NSEQ_ICMP=0;  //Numero de secuencia ICMP
 
 void handleSignal(int nsignal){
 	printf("Control C pulsado (%"PRIu64")\n", cont);
@@ -159,7 +160,7 @@ int main(int argc, char **argv){
 
 	//Formamos y enviamos el trafico, debe enviarse un unico segmento por llamada a enviar() aunque luego se traduzca en mas de un datagrama
 	//Primero, un paquete ICMP; en concreto, un ping
-	pila_protocolos[0]=ICMP_PROTO; pila_protocolos[1]=IP_PROTO; pila_protocolos[2]=0;
+	pila_protocolos[0]=ICMP_PROTO; pila_protocolos[1]=IP_PROTO; pila_protocolos[2]=ETH_PROTO;
 	Parametros parametros_icmp; parametros_icmp.tipo=PING_TIPO; parametros_icmp.codigo=PING_CODE; parametros_icmp.bit_DF=flag_dontfrag; memcpy(parametros_icmp.IP_destino,IP_destino_red,IP_ALEN);
 	if(enviar((uint8_t*)ICMP_DATA,strlen(ICMP_DATA),pila_protocolos,&parametros_icmp)==ERROR ){
 		printf("Error: enviar(): %s %s %d.\n",errbuf,__FILE__,__LINE__);
@@ -232,13 +233,47 @@ printf("Enviar(%"PRIu16") %s %d.\n",protocolo,__FILE__,__LINE__);
 uint8_t moduloICMP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolos, void *parametros){
 	uint8_t segmento[ICMP_DATAGRAM_MAX]={0};
 	uint8_t aux8;
+	uint16_t aux16;
 	uint32_t pos=0;
 	uint8_t protocolo_inferior=pila_protocolos[1];
 	printf("modulo ICMP(%"PRIu16") %s %d.\n",protocolo_inferior,__FILE__,__LINE__);
 	
+	/* Se rellena el campo tipo del paquete ICMP*/
 	aux8=PING_TIPO;
 	memcpy(segmento+pos,&aux8,sizeof(uint8_t));
 	pos+=sizeof(uint8_t);
+
+	/* Se rellena el campo codigo  del paquete ICMP */
+	aux8=PING_CODE;
+	memcpy(segmento+pos,&aux8,sizeof(uint8_t));
+	pos+=sizeof(uint8_t);
+
+	/* Se rellena el campo codigo  del paquete ICMP */
+	if(longitud%2 != 0){
+		printf("El campo longitud del mensaje ICMP no es par");
+		return -1;
+	}
+	if(calcularChecksum(mensaje, ICMP_HLEN+len(longitud), &aux8)){
+		printf("Error al calcular el checksum de ICMP\n");
+		return -1;
+	}
+	aux16 = (uint16_t) aux8;
+	memcpy(segmento+pos, &aux16, sizeof(uint16_t));
+	pos+=sizeof(uint16_t);
+
+	/* Se rellena el campo identificador */
+	aux16 = ID_ICMP;
+	memcpy(segmento+pos, &aux16, sizeof(uint16_t));
+	ID_ICMP += 1;
+	pos+=sizeof(uint16_t);
+
+	/*Se rellena el campo Numero de secuencia*/
+	aux = NSEQ_ICMP;
+	memcpy(segmento+pos, &aux16, sizeof(uint16_t));
+	NSEQ_ICMP+=1;
+	pos+=sizeof(uint16_t);
+
+
 //TODO rellenar el resto de campos de ICMP, incluyendo el checksum tras haber rellenado todo el segmento, incluyendo el mensaje
 // El campo de identificador se puede asociar al pid, y el de secuencia puede ponerse a 1.
 //[....]
