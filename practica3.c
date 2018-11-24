@@ -267,16 +267,19 @@ uint8_t moduloICMP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolo
 	ID_ICMP += 1;
 	pos+=sizeof(uint16_t);
 
-	/*Se rellena el campo Numero de secuencia*/
+	/* Se rellena el campo Numero de secuencia*/
 	aux = NSEQ_ICMP;
 	memcpy(segmento+pos, &aux16, sizeof(uint16_t));
 	NSEQ_ICMP+=1;
 	pos+=sizeof(uint16_t);
 
+	/* Se rellena el campo datos */
+	if(sizeof(mensaje) > 48){							/*No tengo claro que el len del mensaje sea igual a Byte*/
+		printf("El tamaño del mensaje es mayor de 48 Bytes\n");
+		return -1;
+	}
+	memcpy(segmento+pos, mensaje, sizeof(mensaje));		/*Sizeof(48)??*/
 
-//TODO rellenar el resto de campos de ICMP, incluyendo el checksum tras haber rellenado todo el segmento, incluyendo el mensaje
-// El campo de identificador se puede asociar al pid, y el de secuencia puede ponerse a 1.
-//[....]
 
 //Se llama al protocolo definido de nivel inferior a traves de los punteros registrados en la tabla de protocolos registrados
 	return protocolos_registrados[protocolo_inferior](segmento,longitud+pos,pila_protocolos,parametros);
