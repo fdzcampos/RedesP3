@@ -204,7 +204,7 @@ int main(int argc, char **argv){
 
 uint8_t enviar(uint8_t* mensaje, uint32_t longitud,uint16_t* pila_protocolos,void *parametros){
 	uint16_t protocolo=pila_protocolos[0];
-printf("Enviar(%"PRIu16") %s %d.\n",protocolo,__FILE__,__LINE__);
+	printf("Enviar(%"PRIu16") %s %d.\n",protocolo,__FILE__,__LINE__);
 	if(protocolos_registrados[protocolo]==NULL){
 		printf("Protocolo %"PRIu16" desconocido\n",protocolo);
 		return ERROR;
@@ -237,14 +237,15 @@ uint8_t moduloICMP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolo
 	uint32_t pos=0;
 	uint8_t protocolo_inferior=pila_protocolos[1];
 	printf("modulo ICMP(%"PRIu16") %s %d.\n",protocolo_inferior,__FILE__,__LINE__);
-	
+	Parametros icmpdatos=*((Parametros*)parametros);
+
 	/* Se rellena el campo tipo del paquete ICMP*/
-	aux8=PING_TIPO;
+	aux8=icmpdatos.tipo;
 	memcpy(segmento+pos,&aux8,sizeof(uint8_t));
 	pos+=sizeof(uint8_t);
 
 	/* Se rellena el campo codigo  del paquete ICMP */
-	aux8=PING_CODE;
+	aux8=icmpdatos.codigo;
 	memcpy(segmento+pos,&aux8,sizeof(uint8_t));
 	pos+=sizeof(uint8_t);
 
@@ -274,14 +275,14 @@ uint8_t moduloICMP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolo
 	pos+=sizeof(uint16_t);
 
 	/* Se rellena el campo datos */
-	if(sizeof(mensaje) > 48){							/*No tengo claro que el len del mensaje sea igual a Byte*/
-		printf("El tamaño del mensaje es mayor de 48 Bytes\n");
+	if(longitud > 48){
+		print("El mensaje es de mas de 48 Bytes\n");			/*!!!!!!!!!!!!!!!!!!!!!!!!!PREGUNTAR SIE HACE FALTA Y SI ES ASI!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 		return -1;
 	}
-	memcpy(segmento+pos, mensaje, sizeof(mensaje));		/*Sizeof(48)??*/
+	memcpy(segmento+pos, mensaje, longitud*sizeof(uint8_t));
+	pos+=longitud*sizeof(uint8_t);
 
-
-//Se llama al protocolo definido de nivel inferior a traves de los punteros registrados en la tabla de protocolos registrados
+	//Se llama al protocolo definido de nivel inferior a traves de los punteros registrados en la tabla de protocolos registrados
 	return protocolos_registrados[protocolo_inferior](segmento,longitud+pos,pila_protocolos,parametros);
 }
 
@@ -347,13 +348,31 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 	uint8_t IP_origen[IP_ALEN];
 	uint8_t protocolo_superior=pila_protocolos[0];
 	uint8_t protocolo_inferior=pila_protocolos[2];
-	pila_protocolos++;
+	pila_protocolos++;	/*Para apuntarlo a pila_protocolos[1]*/
 	uint8_t mascara[IP_ALEN],IP_rango_origen[IP_ALEN],IP_rango_destino[IP_ALEN];
 
 	printf("modulo IP(%"PRIu16") %s %d.\n",protocolo_inferior,__FILE__,__LINE__);
 
 	Parametros ipdatos=*((Parametros*)parametros);
 	uint8_t* IP_destino=ipdatos.IP_destino;
+
+	/*Introducimos en el datagrama el campo version y IHL porque son 4 bits cada uno*/
+	aux8 = 0b01000101;									/*!!!!!!!!!!!!!!!!!!!!!!!!!PREGUNTAR 5 O 6!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+	memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
+	pos+=sizeof(uint8_t);
+
+	/*Introducimos en el datagrama el campo IHL*/
+	/*Introducimos en el datagrama el campo Tipo Servicio*/
+	/*Introducimos en el datagrama el campo Longitud Total*/
+	/*Introducimos en el datagrama el campo Identificacion*/
+	/*Introducimos en el datagrama el campo Flags*/
+	/*Introducimos en el datagrama el campo Posicion*/
+	/*Introducimos en el datagrama el campo Tiempo de vida*/
+	/*Introducimos en el datagrama el campo */
+
+
+
+
 
 //TODO
 //Llamar a solicitudARP(...) adecuadamente y usar ETH_destino de la estructura parametros
@@ -484,13 +503,18 @@ uint8_t calcularChecksum(uint8_t *datos, uint16_t longitud, uint8_t *checksum) {
 
 uint8_t inicializarPilaEnviar() {
 	bzero(protocolos_registrados,MAX_PROTOCOL*sizeof(pf_notificacion));
+	/*Registramos el protocolo ETH en los protocolos registrados*/
 	if(registrarProtocolo(ETH_PROTO, moduloETH, protocolos_registrados)==ERROR)
 		return ERROR;
+	/*Registramos el protocolo IP en los protocolos registrados*/
 	if(registrarProtocolo(IP_PROTO, moduloIP, protocolos_registrados)==ERROR)
 		return ERROR;
-	
-//TODO
-//A registrar los modulos de ICMP y UDP [...] 
+	/*Registramos el protocolo ICMP en los protocolos registrados*/
+	if(registrarProtocolo(ICMP_PROTO, moduloICMP, protocolos_registrados)==ERROR)
+		return ERROR;
+	/*Registramos el protocolo UDP en los protocolos registrados*/
+	if(registrarProtocolo(UDP_PROTO, moduloUDP, protocolos_registrados)==ERROR)
+		return ERROR;
 
 	return OK;
 }
