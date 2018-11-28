@@ -21,6 +21,7 @@ uint64_t cont=0;	//Contador numero de mensajes enviados
 char interface[10];	//Interface donde transmitir por ejemplo "eth0"
 uint16_t ID=1;		//Identificador IP
 uint16_t ID_ICMP=1; //Campo identificador ICMP
+uint16_t ID_IP=1; //Campo identificador IP
 uint16_t NSEQ_ICMP=0;  //Numero de secuencia ICMP
 
 void handleSignal(int nsignal){
@@ -67,7 +68,7 @@ int main(int argc, char **argv){
 				sprintf(interface,"%s",optarg);
 				break;
 
-			case '2' : 
+			case '2' :
 
 				flag_ip = 1;
 				//Leemos la IP a donde transmitir y la almacenamos en orden de red
@@ -342,7 +343,7 @@ uint8_t moduloUDP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolos
 uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos, void *parametros){
 	uint8_t datagrama[IP_DATAGRAM_MAX]={0};
 	uint32_t aux32;
-	uint16_t aux16;
+	uint16_t aux16, aux16_frag;
 	uint8_t aux8;
 	uint32_t pos=0,pos_control=0;
 	uint8_t IP_origen[IP_ALEN];
@@ -350,27 +351,74 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 	uint8_t protocolo_inferior=pila_protocolos[2];
 	pila_protocolos++;	/*Para apuntarlo a pila_protocolos[1]*/
 	uint8_t mascara[IP_ALEN],IP_rango_origen[IP_ALEN],IP_rango_destino[IP_ALEN];
+	uint16_t *MTUaux;
+	uint16_t posicionaux = 1;
+	int i = 0;
+
 
 	printf("modulo IP(%"PRIu16") %s %d.\n",protocolo_inferior,__FILE__,__LINE__);
 
-	Parametros ipdatos=*((Parametros*)parametros);
-	uint8_t* IP_destino=ipdatos.IP_destino;
+	for(i=0; i<posicionaux; i++){
+		Parametros ipdatos=*((Parametros*)parametros);
+		uint8_t* IP_destino=ipdatos.IP_destino;
 
-	/*Introducimos en el datagrama el campo version y IHL porque son 4 bits cada uno*/
-	aux8 = 0b01000101;									/*!!!!!!!!!!!!!!!!!!!!!!!!!PREGUNTAR 5 O 6!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-	memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
-	pos+=sizeof(uint8_t);
+		/*Introducimos en el datagrama el campo version y IHL porque son 4 bits cada uno*/
+		aux8 = 0b01000101;									/*!!!!!!!!!!!!!!!!!!!!!!!!!PREGUNTAR 5 O 6!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+		memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
+		pos+=sizeof(uint8_t);
 
-	/*Introducimos en el datagrama el campo IHL*/
-	/*Introducimos en el datagrama el campo Tipo Servicio*/
-	/*Introducimos en el datagrama el campo Longitud Total*/
-	/*Introducimos en el datagrama el campo Identificacion*/
-	/*Introducimos en el datagrama el campo Flags*/
-	/*Introducimos en el datagrama el campo Posicion*/
-	/*Introducimos en el datagrama el campo Tiempo de vida*/
-	/*Introducimos en el datagrama el campo */
+		/*Introducimos en el datagrama el campo Tipo Servicio*/
+		aux8 = 0b11111111;													/* PREGUNTAR */
+		memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
+		pos+=sizeof(uint8_t);
 
+		/*Introducimos en el datagrama el campo Longitud Total*/
+		aux16 = (uint16_t)longitud;											/* PREGUNTAR: ltotal = lcabecera (20) + ldatagrama */
+		memcpy(datagrama+pos,&aux16,sizeof(uint16_t));
+		pos+=sizeof(uint16_t);
+		
+		/*Introducimos en el datagrama el campo Identificacion*/
+		aux16 = ID_IP;
+		memcpy(datagrama+pos,&aux16,sizeof(uint16_t));
+		pos+=sizeof(uint16_t);
 
+		/*Introducimos en el datagrama el campo Flags (reservado = 0, df, last fragment = 0) y la Posicion*/
+		/* PREGUNTAR: como sabes cual es la ultima posicion, cual es mi mtu?*/
+		if( flag_dontfrag == 0 ){
+			obtenerMTUInterface(interface, MTUaux);
+			if(MTUaux < longitud+20) {
+				posicionaux = (longitud+20)/MTUaux;
+				aux16 = 0b0000000000000000 || (uint16_t) i;
+
+				if(i == posicionaux){
+					aux16 = 0b0010000000000000 || (uint16_t) i;
+				}
+			}else{
+				// no me hace falta fragmentar, todo sigue normal
+				aux16 = 0b0100000000000000;
+			}
+
+		}else{
+			// no me hace falta fragmentar, todo sigue normal
+			// como se gestionan los errores si mtu < longitud
+			aux16 = 0b0100000000000000;
+		}
+		memcpy(datagrama+pos, &aux16, sizeof(uint16_t));
+		pos+=sizeof(uint16_t);
+		
+		/*Introducimos en el datagrama el campo Tiempo de vida, maria dice que da igual*/
+		aux8= 0b10000000;		/*Hemos puesto 128 bc ositos*/
+		memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
+		pos+=sizeof(uint8_t);
+
+		/*Introducimos en el datagrama el campo Protocolo */
+		aux8= protocolo_inferior;
+		memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
+		pos+=sizeof(uint8_t);
+
+	}
+
+	// 
 
 
 
@@ -436,6 +484,8 @@ printf("modulo ETH(fisica) %s %d.\n",__FILE__,__LINE__);
 uint8_t aplicarMascara(uint8_t* IP, uint8_t* mascara, uint8_t longitud, uint8_t* resultado){
 //TODO
 //[...]
+
+
 }
 
 
