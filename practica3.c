@@ -358,78 +358,140 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 
 	printf("modulo IP(%"PRIu16") %s %d.\n",protocolo_inferior,__FILE__,__LINE__);
 
-	for(i=0; i<posicionaux; i++){
-		Parametros ipdatos=*((Parametros*)parametros);
-		uint8_t* IP_destino=ipdatos.IP_destino;
+	/*for(i=0; i<posicionaux; i++){*/
+	Parametros ipdatos=*((Parametros*)parametros);
+	uint8_t* IP_destino=ipdatos.IP_destino;
+	IP_origen = ipdatos.IP_origen;
 
-		/*Introducimos en el datagrama el campo version y IHL porque son 4 bits cada uno*/
-		aux8 = 0b01000101;									/*!!!!!!!!!!!!!!!!!!!!!!!!!PREGUNTAR 5 O 6!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-		memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
-		pos+=sizeof(uint8_t);
+	/*Introducimos en el datagrama el campo version y IHL porque son 4 bits cada uno*/
+	aux8 = 0b01000101;									/*Sin opciones ni relleno*/
+	memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
+	pos+=sizeof(uint8_t);
 
-		/*Introducimos en el datagrama el campo Tipo Servicio*/
-		aux8 = 0b11111111;													/* PREGUNTAR */
-		memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
-		pos+=sizeof(uint8_t);
+	/*Introducimos en el datagrama el campo Tipo Servicio*/
+	aux8 = 0;													/* TOdo a , la red de la autonoma, lo cambia a 0 por defecto */
+	memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
+	pos+=sizeof(uint8_t);
 
-		/*Introducimos en el datagrama el campo Longitud Total*/
-		aux16 = (uint16_t)longitud;											/* PREGUNTAR: ltotal = lcabecera (20) + ldatagrama */
-		memcpy(datagrama+pos,&aux16,sizeof(uint16_t));
-		pos+=sizeof(uint16_t);
-		
-		/*Introducimos en el datagrama el campo Identificacion*/
-		aux16 = ID_IP;
-		memcpy(datagrama+pos,&aux16,sizeof(uint16_t));
-		pos+=sizeof(uint16_t);
+	/*Introducimos en el datagrama el campo Longitud Total*/
+	aux16 = htons((uint16_t)longitud);											/* PREGUNTAR: ltotal = lcabecera (20) + ldatagrama */
+	memcpy(datagrama+pos,&aux16,sizeof(uint16_t));
+	pos+=sizeof(uint16_t);
+	
+	/*Introducimos en el datagrama el campo Identificacion*/
+	aux16 = ID_IP;
+	memcpy(datagrama+pos,&aux16,sizeof(uint16_t));
+	pos+=sizeof(uint16_t);
 
-		/*Introducimos en el datagrama el campo Flags (reservado = 0, df, last fragment = 0) y la Posicion*/
-		/* PREGUNTAR: como sabes cual es la ultima posicion, cual es mi mtu?*/
-		if( flag_dontfrag == 0 ){
-			obtenerMTUInterface(interface, MTUaux);
-			if(MTUaux < longitud+20) {
-				posicionaux = (longitud+20)/MTUaux;
-				aux16 = 0b0000000000000000 || (uint16_t) i;
+	/*Introducimos en el datagrama el campo Flags (reservado = 0, df, last fragment = 0) y la Posicion*/
+	/* PREGUNTAR: como sabes cual es la ultima posicion, cual es mi mtu?*/
+	/*/if( flag_dontfrag == 0 ){
+		obtenerMTUInterface(interface, MTUaux);
+		if(MTUaux < longitud+20) {
+			posicionaux = (longitud+20)/MTUaux;
+			aux16 = 0b0000000000000000 || (uint16_t) i;
 
-				if(i == posicionaux){
-					aux16 = 0b0010000000000000 || (uint16_t) i;
-				}
-			}else{
-				// no me hace falta fragmentar, todo sigue normal
-				aux16 = 0b0100000000000000;
+			if(i == posicionaux){
+				aux16 = 0b0010000000000000 || (uint16_t) i;
 			}
-
 		}else{
 			// no me hace falta fragmentar, todo sigue normal
-			// como se gestionan los errores si mtu < longitud
 			aux16 = 0b0100000000000000;
-		}
-		memcpy(datagrama+pos, &aux16, sizeof(uint16_t));
-		pos+=sizeof(uint16_t);
-		
-		/*Introducimos en el datagrama el campo Tiempo de vida, maria dice que da igual*/
-		aux8= 0b10000000;		/*Hemos puesto 128 bc ositos*/
-		memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
-		pos+=sizeof(uint8_t);
+		}*/
+	/*
+	}else{
+		// no me hace falta fragmentar, todo sigue normal
+		// como se gestionan los errores si mtu < longitud
+		aux16 = 0b0100000000000000;
+	}*/
+	memcpy(datagrama+pos, &aux16, sizeof(uint16_t));
+	pos+=sizeof(uint16_t);
+	
+	/*Introducimos en el datagrama el campo Tiempo de vida, maria dice que da igual*/
+	aux8= 0b10000000;		/*Hemos puesto 128 bc ositos*/
+	memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
+	pos+=sizeof(uint8_t);
 
-		/*Introducimos en el datagrama el campo Protocolo */
-		aux8= protocolo_inferior;
-		memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
-		pos+=sizeof(uint8_t);
+	/*Introducimos en el datagrama el campo Protocolo */
+	aux8= protocolo_superior;
+	memcpy(datagrama+pos,&aux8,sizeof(uint8_t));
+	pos+=sizeof(uint8_t);
 
+	/*Introducimos en el datagrama el campo suma de control de cabecera*/
+	aux16 = 0;		/*Se rellena a 0's y al final de la funcion se calcula*/
+	memcpy(datagrama+pos,&aux16,sizeof(uint16_t));
+	pos+=sizeof(uint16_t);
+
+	/*Introducimos en el datagrama la direccion de origen*/
+	aux32 = htonl(IP_origen);
+	memcpy(datagrama+pos,&aux32,sizeof(uint32_t));
+	pos+=sizeof(uint32_t);
+
+	/*Introducimos en el datagrama la direccion de destino*/
+	aux32 = htonl(IP_destino);
+	memcpy(datagrama+pos,&aux32,sizeof(uint32_t));
+	pos+=sizeof(uint32_t);
+
+	/*No tenemos datos ni relleno*/
+
+	/*Realizamos la solicitud ARP*/
+
+	if(obtenerMascaraInterface(interface, mascara) == ERROR){		/*Obtenemos la mascara que vamos a usar*/
+		printf("ERROR en obtenerMascaraInterface\n");
+		return ERROR;
 	}
 
-	// 
+	if( aplicarMascara(IP_origen, mascara, 4, IP_rango_origen) == ERROR){		/*Aplicamos la mascara a la ip_origen*/
+		printf("Error aplicando la mascara a la ip\n");
+		return ERROR;
+	}
 
+	if( aplicarMascara(IP_destino, mascara, 4, IP_rango_destino) == ERROR){		/*Aplicamos la mascara a la ip_destino*/
+		printf("Error aplicando la mascara\n");
+		return ERROR;
+	}
 
+	/*Comparamos si la IP_destino es la misma que el resultado de aplicar la máscara, es decir, si está en mi subred o no, comparacion para tamaño 4 Bytes solo (IPv4)*/
+	/*if(IP_rango_destino == IP_rango_origen) {		
+	/*	solicitudARP(interface, ,&aux8);
+	}*/
 
-//TODO
-//Llamar a solicitudARP(...) adecuadamente y usar ETH_destino de la estructura parametros
-//[...] 
-//TODO A implementar el datagrama y fragmentación, asi como control de tamano segun bit DF
-//[...] 
-//llamada/s a protocolo de nivel inferior [...]
+	/*Comparamos las IP por octectos, porque aunque, en nuestro caso no haya que hacerlo (se puede comparar a lo bruto), si hay un caso en que no son 4Bytes(IPv4) como IPv6
+	tambien funciona :) */
+	for(i=0; i<IP_ALEN; i++) {						
+		if(IP_rango_destino[i] != IP_rango_origen[i] && flag == 0){
+			flag = 1;
+		}
+	}
 
+	/*Mandamos la solicitud ARP*/
 
+	if(flag == 0) {		/*Caso en el que el retorno de las mascaras es igual, por lo tanto se pasa la ip_destino, que esta en la misma subred*/
+		if(solicitudARP(interface, IP_destino, &aux8) == ERROR ){		/*se realiza la solicitud arp para la ip de destino*/
+			printf("Error realizando la solicitud ARP a la ip destino\n");
+			return ERROR;
+		}
+	} else {			/*Caso en el que el retorno de las mascaras es diferente, por lo tanto se le pasa la ip del router, porque la ip_dest no esta en la subred*/
+		if (obtenerGateway(interface, &aux8) == ERROR){		/*Se obtiene la ip del router*/
+			printf("Error obteniendo la gateway\n");
+			return ERROR;
+		}
+		if(solicitudARP(interface, &aux8, &aux8) == ERROR){   	/*se realiza la solicitud arp para la ip del router*/				/* OJO CUIDAO */
+			printf("Error realizando la solicitud ARP a la ip del router\n");
+			return ERROR;
+		}
+	}
+
+	/*}*/
+
+	//TODO
+	//Llamar a solicitudARP(...) adecuadamente y usar ETH_destino de la estructura parametros
+	//[...] 
+	//TODO A implementar el datagrama y fragmentación, asi como control de tamano segun bit DF
+	//[...] 
+	//llamada/s a protocolo de nivel inferior [...]
+
+	return protocolos_registrados[protocolo_inferior](datagrama,longitud+pos,pila_protocolos,parametros);
 }
 
 
@@ -482,10 +544,16 @@ printf("modulo ETH(fisica) %s %d.\n",__FILE__,__LINE__);
  ****************************************************************************************/
 
 uint8_t aplicarMascara(uint8_t* IP, uint8_t* mascara, uint8_t longitud, uint8_t* resultado){
-//TODO
-//[...]
 
+	if(!IP || !mascara) {
+		return ERROR;
+	} 
 
+	/*Como la longitud en esta practica va a ser de 4 podemos hacer la and como se especifica abajo
+	pero en otro caso habría que hacerlo por octetos con ayuda de un bucle, ya que la longitud puede ser de 32*/
+
+	*resultado = IP && mascara;
+	return OK;
 }
 
 

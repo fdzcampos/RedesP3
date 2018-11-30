@@ -1,0 +1,25 @@
+MTU -> Tamaño de datos que se transmiten a nivel de enlace -> funcion (ETH 1514 , 14 CABEZ, 1500 DATOS)
+Si se fragmenta se mandan N datagramas IP con cabecera y un fragmento de datos.
+Una opcion es restarle a la MTU los 20Bytes de la cabecera que siempre se mandan
+cuando se haga la division offset entero más cercano múltiplo de 8.
+
+Y = Y mod 8
+
+- Proceso de la fragmentacion.
+
+X/Tam_datos = nº paquetes. (Se coje el techo)
+
+El MT siempre a 1 en fragmentacion excepto en el último fragmento
+
+offset = (nºpaquete*tam_datos)/8
+
+- En la práctica.
+
+O se mandan muchos más bytes (de lo que soporta la MTU), obligando a fragmentar o se cambia la MTU.(Si se hace esta última) (Esta explicacion al parecer no es a nivel de ip
+si no por encima, however, da igual, no es relevante para la práctica, nosotros hacemos el primer)
+
+CUIDADO CON LOS FLAGS
+
+- el reservado no se usa
+- el dont fragment está a 0 si hay que fragmentar y a 1 si no
+- el último bit que es el more fragment esta a uno siempre y cuando no sea el último fragmento porque hay más fragmentos.
