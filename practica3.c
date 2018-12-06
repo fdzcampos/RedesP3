@@ -88,7 +88,7 @@ int main(int argc, char **argv){
 				break;
 
 			case '4' :
-
+				//Leemos la fuente de los datos que se van a enviar
 				if(strcmp(optarg,"stdin")==0) {
 					if (fgets(data, sizeof data, stdin)==NULL) {
 						  	printf("Error leyendo desde stdin: %s %s %d.\n",errbuf,__FILE__,__LINE__);
@@ -166,8 +166,12 @@ int main(int argc, char **argv){
 
 	//Formamos y enviamos el trafico, debe enviarse un unico segmento por llamada a enviar() aunque luego se traduzca en mas de un datagrama
 	//Primero, un paquete ICMP; en concreto, un ping
-	pila_protocolos[0]=ICMP_PROTO; pila_protocolos[1]=IP_PROTO; pila_protocolos[2]=ETH_PROTO;
-	Parametros parametros_icmp; parametros_icmp.tipo=PING_TIPO; parametros_icmp.codigo=PING_CODE; parametros_icmp.bit_DF=flag_dontfrag; memcpy(parametros_icmp.IP_destino,IP_destino_red,IP_ALEN);
+	pila_protocolos[0]=ICMP_PROTO; pila_protocolos[1]=IP_PROTO; pila_protocolos[2]=ETH_PROTO;		// llenamos la pila de protocolos con los identificadores de cada protocolo
+	Parametros parametros_icmp; 
+	parametros_icmp.tipo=PING_TIPO; 
+	parametros_icmp.codigo=PING_CODE;
+	parametros_icmp.bit_DF=flag_dontfrag;
+	memcpy(parametros_icmp.IP_destino,IP_destino_red,IP_ALEN);
 	if(enviar((uint8_t*)ICMP_DATA,strlen(ICMP_DATA),pila_protocolos,&parametros_icmp)==ERROR ){
 		printf("Error: enviar(): %s %s %d.\n",errbuf,__FILE__,__LINE__);
 		return ERROR;
@@ -189,7 +193,7 @@ int main(int argc, char **argv){
 
 	printf("Enviado mensaje %"PRIu64", almacenado en %s\n\n\n", cont,fichero_pcap_destino);
 
-		//Cerramos descriptores
+	//Cerramos descriptores
 	pcap_close(descr);
 	pcap_dump_close(pdumper);
 	pcap_close(descr2);
@@ -207,7 +211,6 @@ int main(int argc, char **argv){
  *  -parametros: parametros necesario para el envio (struct parametros)                 *
  * Retorno: OK/ERROR                                                                    *
  ****************************************************************************************/
-
 uint8_t enviar(uint8_t* mensaje, uint32_t longitud,uint16_t* pila_protocolos,void *parametros){
 	uint16_t protocolo=pila_protocolos[0];
 	printf("Enviar(%"PRIu16") %s %d.\n",protocolo,__FILE__,__LINE__);
@@ -223,7 +226,6 @@ uint8_t enviar(uint8_t* mensaje, uint32_t longitud,uint16_t* pila_protocolos,voi
 
 /***************************Pila de protocolos a implementar************************************/
 
-
 /****************************************************************************************
  * Nombre: moduloICMP                                                                   *
  * Descripcion: Esta funcion implementa el modulo de envio ICMP                         *
@@ -234,7 +236,6 @@ uint8_t enviar(uint8_t* mensaje, uint32_t longitud,uint16_t* pila_protocolos,voi
  *  -parametros: parametros necesario para el envio este protocolo                      *
  * Retorno: OK/ERROR                                                                    *
  ****************************************************************************************/
-
 uint8_t moduloICMP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolos, void *parametros){
 	uint8_t segmento[ICMP_DATAGRAM_MAX]={0};
 	uint8_t aux8;
@@ -242,6 +243,7 @@ uint8_t moduloICMP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolo
 	uint16_t aux16;
 	uint32_t pos=0;
 	uint8_t protocolo_inferior=pila_protocolos[1];
+	
 	printf("modulo ICMP(%"PRIu16") %s %d.\n",protocolo_inferior,__FILE__,__LINE__);
 	Parametros icmpdatos=*((Parametros*)parametros);
 
@@ -253,63 +255,69 @@ uint8_t moduloICMP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolo
 	}
 	pos+=sizeof(uint8_t);
 
-
 	/* Se rellena el campo codigo  del paquete ICMP */
 	aux8=icmpdatos.codigo;
 	if(memcpy(segmento+pos,&aux8,sizeof(uint8_t)) == NULL) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;
 	}
-	pos+=sizeof(uint8_t);
+	pos += sizeof(uint8_t);
 
+	// el checksum lo rellenamos al final, de momento lo dejamos a 0 y guardamos la posicion donde guardarlo en posCheckSum
 	posCheckSum = segmento+pos;
-	aux16=0;
-	memcpy(segmento+pos, &aux16, sizeof(uint16_t));
-	pos+=sizeof(uint16_t);
+	aux16=htons(0);
+	if(memcpy(segmento+pos, &aux16, sizeof(uint16_t))==NULL){
+		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+		return ERROR;
+	}
+	pos += sizeof(uint16_t);
 
 	/* Se rellena el campo identificador */
-	aux16 = ID_ICMP;
+	aux16 = ntohs(ID_ICMP);
 	if(memcpy(segmento+pos, &aux16, sizeof(uint16_t)) == NULL) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;
 	}
-	ID_ICMP += 1;
-	pos+=sizeof(uint16_t);
+	ID_ICMP++;
+	pos += sizeof(uint16_t);
 
 	/* Se rellena el campo Numero de secuencia*/
-	aux16 = NSEQ_ICMP;
+	aux16 = ntohs(NSEQ_ICMP);
 	if(memcpy(segmento+pos, &aux16, sizeof(uint16_t)) == NULL) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;
 	}
-	NSEQ_ICMP+=1;
-	pos+=sizeof(uint16_t);
+	NSEQ_ICMP++;
+	pos += sizeof(uint16_t);
 
 	/* Se rellena el campo datos */
 	if(longitud > 48){
 		printf("El mensaje es de mas de 48 Bytes\n");											/*!!!!!!!!!!!!!!!!!!!!!!!!!PREGUNTAR SIE HACE FALTA Y SI ES ASI!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 		return ERROR;
 	}
-	memcpy(segmento+pos, mensaje, longitud*sizeof(uint8_t));
-	pos+=longitud*sizeof(uint8_t);
+	if(memcpy(segmento+pos, mensaje, longitud) == NULL){
+		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+		return ERROR;
+	}
+	pos+=longitud;			// apuntamos al final de la parte de datos de ICMP
 
 	/* Se rellena el campo suma de control del paquete ICMP */
 	if(longitud%2 != 0){
 		printf("El campo longitud del mensaje ICMP no es par");
 		return -1;
 	}
-	if(calcularChecksum(segmento, pos+longitud, &aux8)){
+	if( calcularChecksum(segmento, pos+longitud, posCheckSum) ){	// PREGUNTAR, hace falta hacer el casteo?	// los datos son los del segmento, la longitud es la que nos mandan mas la de la cabecera
 		printf("Error al calcular el checksum de ICMP\n");
 		return -1;
 	}
-	/*aux16 = (uint16_t) aux8;*/
-	if(memcpy(posCheckSum, &aux8, sizeof(uint16_t)) == NULL) {
+	/*aux16 = (uint16_t) aux8;
+	if( memcpy(posCheckSum, &aux8, sizeof(uint16_t)) == NULL ) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;
-	}
+	}*/
 
 	//Se llama al protocolo definido de nivel inferior a traves de los punteros registrados en la tabla de protocolos registrados
-	return protocolos_registrados[protocolo_inferior](segmento,longitud+pos,pila_protocolos,parametros);
+	return protocolos_registrados[protocolo_inferior](segmento,longitud+pos,pila_protocolos,&icmpdatos);
 }
 
 
@@ -323,7 +331,6 @@ uint8_t moduloICMP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolo
  *  -parametros: parametros necesario para el envio este protocolo                      *
  * Retorno: OK/ERROR                                                                    *
  ****************************************************************************************/
-
 uint8_t moduloUDP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolos, void *parametros){
 	uint8_t segmento[UDP_SEG_MAX]={0};
 	uint16_t puerto_origen = 0;
@@ -388,23 +395,22 @@ uint8_t moduloUDP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolos
  *  -parametros: parametros necesario para el envio este protocolo                      *
  * Retorno: OK/ERROR                                                                    *
  ****************************************************************************************/
-
 uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos, void *parametros){
 	uint8_t datagrama[IP_DATAGRAM_MAX]={0};
-	uint32_t aux32;
-	uint16_t aux16, aux16_frag;
 	uint8_t aux8;
-	uint32_t pos=0,pos_control=0;
 	uint8_t IP_origen[IP_ALEN];
 	uint8_t protocolo_superior=pila_protocolos[0];
 	uint8_t protocolo_inferior=pila_protocolos[2];
-	pila_protocolos++;	/*Para apuntarlo a pila_protocolos[1]*/
 	uint8_t mascara[IP_ALEN],IP_rango_origen[IP_ALEN],IP_rango_destino[IP_ALEN];
+	uint16_t aux16, aux16_frag;
 	uint16_t *MTUaux;
 	uint16_t posicionaux = 1;
+	uint32_t aux32;
+	uint32_t pos=0,pos_control=0;
 	int i = 0;
 	int flag = 0 ;  
-
+	
+	/* pila_protocolos++;	Para apuntarlo a pila_protocolos[1]*/
 
 	printf("modulo IP(%"PRIu16") %s %d.\n",protocolo_inferior,__FILE__,__LINE__);
 
@@ -426,7 +432,7 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 	pos+=sizeof(uint8_t);
 
 	/*Introducimos en el datagrama el campo Tipo Servicio*/
-	aux8 = 0;													/* TOdo a , la red de la autonoma, lo cambia a 0 por defecto */
+	aux8 = 0;													/* Todo a , la red de la autonoma, lo cambia a 0 por defecto */
 	if(memcpy(datagrama+pos,&aux8,sizeof(uint8_t)) == NULL) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;		
@@ -585,7 +591,7 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 
 
 	//TODO A implementar el datagrama y fragmentación, asi como control de tamano segun bit DF
-	return protocolos_registrados[protocolo_inferior](datagrama,longitud+pos,pila_protocolos,parametros);
+	return protocolos_registrados[protocolo_inferior](datagrama,longitud+pos,pila_protocolos,&ipdatos);
 }
 
 
@@ -599,12 +605,13 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
  *  -parametros: Parametros necesario para el envio este protocolo                      *
  * Retorno: OK/ERROR                                                                    *
  ****************************************************************************************/
-
 uint8_t moduloETH(uint8_t* datagrama, uint32_t longitud, uint16_t* pila_protocolos,void *parametros){
 	uint16_t aux16,longitudMTU;
 	uint8_t aux8;
 	uint8_t trama[ETH_FRAME_MAX]={0};
 	uint32_t pos=0;
+	struct timeval time;
+	struct pcap_pkthdr hdr;
 
 	printf("modulo ETH(fisica) %s %d.\n",__FILE__,__LINE__);	
 
@@ -653,12 +660,12 @@ uint8_t moduloETH(uint8_t* datagrama, uint32_t longitud, uint16_t* pila_protocol
 	}
 	
 	//Almacenamos la salida por cuestiones de debugging [...]
-	/*gettimeofday(&time,NULL);
+	gettimeofday(&time,NULL);
     hdr.ts.tv_sec = time.tv_sec;
     hdr.ts.tv_usec = time.tv_usec;
     hdr.len = longitud+pos;
     hdr.caplen = longitud+pos;
-    pcap_dump((u_char *)pdumper,&hdr,trama);*/
+    pcap_dump((u_char *)pdumper,&hdr,trama);
 
 	return OK;
 }
@@ -677,7 +684,6 @@ uint8_t moduloETH(uint8_t* datagrama, uint32_t longitud, uint16_t* pila_protocol
  *  -resultado: Resultados de aplicar mascara en IP en orden red                        *
  * Retorno: OK/ERROR                                                                    *
  ****************************************************************************************/
-
 uint8_t aplicarMascara(uint8_t* IP, uint8_t* mascara, uint8_t longitud, uint8_t* resultado){
 
 	if(!IP || !mascara) {
@@ -702,7 +708,6 @@ uint8_t aplicarMascara(uint8_t* IP, uint8_t* mascara, uint8_t longitud, uint8_t*
  *  -longitud: Bytes que componen el mensaje                                            *
  * Retorno: OK/ERROR                                                                    *
  ****************************************************************************************/
-
 uint8_t mostrarHex(uint8_t * datos, uint32_t longitud){
 	uint32_t i;
 	printf("Datos:\n");
@@ -723,7 +728,6 @@ uint8_t mostrarHex(uint8_t * datos, uint32_t longitud){
  *   -checksum: checksum de los datos (2 bytes) en orden de red!                        *
  * Retorno: OK/ERROR                                                                    *
  ****************************************************************************************/
-
 uint8_t calcularChecksum(uint8_t *datos, uint16_t longitud, uint8_t *checksum) {
     uint16_t word16;
     uint32_t sum=0;
@@ -753,7 +757,6 @@ uint8_t calcularChecksum(uint8_t *datos, uint16_t longitud, uint8_t *checksum) {
  * Descripcion: inicializar la pila de red para enviar registrando los distintos modulos*
  * Retorno: OK/ERROR                                                                    *
  ****************************************************************************************/
-
 uint8_t inicializarPilaEnviar() {
 	bzero(protocolos_registrados,MAX_PROTOCOL*sizeof(pf_notificacion));
 	/*Registramos el protocolo ETH en los protocolos registrados*/
@@ -782,7 +785,6 @@ uint8_t inicializarPilaEnviar() {
  *  -protocolos_registrados: vector de funciones registradas                            *
  * Retorno: OK/ERROR                                                                    *
  ****************************************************************************************/
-
 uint8_t registrarProtocolo(uint16_t protocolo, pf_notificacion handleModule, pf_notificacion* protocolos_registrados){
 	if(protocolos_registrados==NULL ||  handleModule==NULL){		
 		printf("Error: registrarProtocolo(): entradas nulas.\n");
