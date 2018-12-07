@@ -132,6 +132,8 @@ uint8_t obtenerMTUInterface(char* interface, uint16_t* retorno){
 	int fd;
 	struct ifreq ifr;
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	printf("HOLIIIIII\n");
 	if(fd<0) {
 		printf("socket_ERROR\n");
 		return ERROR;
