@@ -408,7 +408,7 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 	uint8_t mascara[IP_ALEN],IP_rango_origen[IP_ALEN]={0},IP_rango_destino[IP_ALEN]={0};
 	uint8_t *posCheckSum = NULL;
 	uint16_t aux16, aux16_frag;
-	uint16_t *MTUaux;
+	uint16_t MTUaux;
 	uint16_t posicionaux = 1;
 	uint32_t aux32;
 	uint32_t pos=0,pos_control=0;
@@ -462,13 +462,13 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		/*Introducimos en el datagrama el campo Flags (reservado = 0, df, last fragment = 0) y la Posicion*/
 		if( ipdatos.bit_DF == 0 ){
 
-			if(obtenerMTUInterface(interface, MTUaux) == ERROR) {
+			if(obtenerMTUInterface(interface, &MTUaux) == ERROR) {
 				printf("PENE\n");
 				printf("Se ha producido un error obteniendo la mtu interface\n");
 				return ERROR;
 			}
-			if(*MTUaux < longitud+20) {
-				posicionaux = (longitud+20)/(*MTUaux);
+			if(MTUaux < longitud+20) {
+				posicionaux = (longitud+20)/(MTUaux);
 				aux16 = 0b0000000000000000 || (uint16_t) i;
 
 				if(i == posicionaux){
