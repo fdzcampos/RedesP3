@@ -37,6 +37,7 @@
 #define ETH_TLEN 2			// Tamano del campo tipo ethernet          
 #define ETH_FRAME_MAX 1514	// Tamano maximo trama ethernet   	
 #define ETH_PROTO 0			// Capa de enlace relativa al interface, le asignamos arbitrariamente el 0
+#define ETH_MAX 60
 
 #define IP_ALEN 4			// Tamano de direccion IP
 #define IP_DATAGRAM_MAX 65535	// Tamano maximo datagrama IP 
