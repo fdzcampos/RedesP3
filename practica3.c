@@ -247,7 +247,6 @@ uint8_t moduloICMP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolo
 	
 	printf("modulo ICMP(%"PRIu16") %s %d.\n",protocolo_inferior,__FILE__,__LINE__);
 	Parametros icmpdatos=*((Parametros*)parametros);
-	printf("LONGITUDICMP: %d\n", longitud);
 
 	/* Se rellena el campo tipo del paquete ICMP*/
 	aux8=icmpdatos.tipo;
@@ -305,19 +304,14 @@ uint8_t moduloICMP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolo
 	/* Se rellena el campo suma de control del paquete ICMP */
 	if(longitud%2 != 0){
 		printf("El campo longitud del mensaje ICMP no es par");
-		return -1;
+		return ERROR;
 	} 
-	if( calcularChecksum(segmento, pos+longitud, (uint8_t *) &aux16) ){
+	if( calcularChecksum(segmento, pos, (uint8_t *) &aux16) ){
 		printf("Error al calcular el checksum de ICMP\n");
-		return -1;
-	}
-
-	if( memcpy(posCheckSum, &aux16, sizeof(uint16_t)) == NULL ) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;
 	}
-
-	if( memcpy(segmento+pos, mensaje, longitud) == NULL ) {
+	/*mostrarHex(aux16, sizeof(uint16_t));*/
+	if( memcpy(posCheckSum, &aux16, sizeof(uint16_t)) == NULL ) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;
 	}
