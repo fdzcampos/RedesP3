@@ -421,179 +421,178 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 	Parametros ipdatos=*((Parametros*)parametros);
 	uint8_t* IP_destino=ipdatos.IP_destino;
 	
-	/*
+	
 	for(i=0; i<posicionaux; i++) {
-	*/
 
-	if( obtenerIPInterface(interface, IP_origen) == ERROR ){
-		printf("Error en obtenerIPInterface\n");
-		return ERROR;
-	}
-	/*Introducimos en el datagrama el campo version y IHL porque son 4 bits cada uno*/
-	aux8 = 0b01000101;									/*Sin opciones ni relleno*/
-	if(memcpy(datagrama+pos,&aux8,sizeof(uint8_t)) == NULL) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;		
-	}
-	pos+=sizeof(uint8_t);
-
-	/*Introducimos en el datagrama el campo Tipo Servicio*/
-	aux8 = 0;													/* Todo a , la red de la autonoma, lo cambia a 0 por defecto */
-	if(memcpy(datagrama+pos,&aux8,sizeof(uint8_t)) == NULL) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;		
-	}
-	pos+=sizeof(uint8_t);
-	
-	/*Introducimos en el datagrama el campo Longitud Total*/
-	aux16 = htons((uint16_t)longitud+20);											/* PREGUNTAR: ltotal = lcabecera (20) + ldatagrama */
-	if(memcpy(datagrama+pos,&aux16,sizeof(uint16_t)) == NULL) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;
-	}
-	pos+=sizeof(uint16_t);
-	
-	/*Introducimos en el datagrama el campo Identificacion*/
-	aux16 = ID_IP;
-	if(memcpy(datagrama+pos,&aux16,sizeof(uint16_t)) == NULL) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;		
-	}
-	pos+=sizeof(uint16_t);
-
-	/*Introducimos en el datagrama el campo Flags (reservado = 0, df, last fragment = 0) y la Posicion*/
-	/*if( ipdatos.bit_DF == 0 ){
-
-		if(obtenerMTUInterface(interface, &MTUaux) == ERROR) {
-			printf("PENE\n");
-			printf("Se ha producido un error obteniendo la mtu interface\n");
+		if( obtenerIPInterface(interface, IP_origen) == ERROR ){
+			printf("Error en obtenerIPInterface\n");
 			return ERROR;
 		}
-		if(MTUaux < longitud+20) {
-			posicionaux = (longitud+20)/(MTUaux);
-			aux16 = 0b0000000000000000 || (uint16_t) i;
+		/*Introducimos en el datagrama el campo version y IHL porque son 4 bits cada uno*/
+		aux8 = 0b01000101;									/*Sin opciones ni relleno*/
+		if(memcpy(datagrama+pos,&aux8,sizeof(uint8_t)) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;		
+		}
+		pos+=sizeof(uint8_t);
 
-			if(i == posicionaux){
-				aux16 = 0b0010000000000000 || (uint16_t) i;
+		/*Introducimos en el datagrama el campo Tipo Servicio*/
+		aux8 = 0;													/* Todo a , la red de la autonoma, lo cambia a 0 por defecto */
+		if(memcpy(datagrama+pos,&aux8,sizeof(uint8_t)) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;		
+		}
+		pos+=sizeof(uint8_t);
+		
+		/*Introducimos en el datagrama el campo Longitud Total*/
+		aux16 = htons((uint16_t)longitud+20);											/* PREGUNTAR: ltotal = lcabecera (20) + ldatagrama */
+		if(memcpy(datagrama+pos,&aux16,sizeof(uint16_t)) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;
+		}
+		pos+=sizeof(uint16_t);
+		
+		/*Introducimos en el datagrama el campo Identificacion*/
+		aux16 = ID_IP;
+		if(memcpy(datagrama+pos,&aux16,sizeof(uint16_t)) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;		
+		}
+		pos+=sizeof(uint16_t);
+
+		printf("DEBUGUEANDO %d\n", ipdatos.bit_DF);
+		/*Introducimos en el datagrama el campo Flags (reservado = 0, df, last fragment = 0) y la Posicion*/
+		if( ipdatos.bit_DF == 0 ){	/*Queremos fragmentar, no hemos puesto el -d*/
+			printf("XD\n");
+			if(obtenerMTUInterface(interface, &MTUaux) == ERROR) {
+				printf("Se ha producido un error obteniendo la mtu interface\n");
+				return ERROR;
 			}
-		}else{
-			// no me hace falta fragmentar, todo sigue normal
-			aux16 = 0b0100000000000000;
+			if(MTUaux < longitud+20) {
+				posicionaux = (longitud+20)/(MTUaux);
+				aux16 = 0b0000000000000000 || (uint16_t) i;
+
+				if(i == posicionaux){
+					aux16 = 0b0010000000000000 || (uint16_t) i;
+				}
+				aux16 = htons(aux16);
+			}else{
+				// no me hace falta fragmentar, todo sigue normal
+				aux16 = htons(0b0000000000000000);
+			}
+		
+		}else{		/*No queremos fragmentar, hemos puesto el -d*/
+			// no puedo/debo, todo sigue normal
+			// como se gestionan los errores si mtu < longitud
+			aux16 = htons(0b0100000000000000);
 		}
-	
-	}else{
-		// no puedo/debo, todo sigue normal
-		// como se gestionan los errores si mtu < longitud
-		aux16 = 0b0100000000000000;
-	}
-	*/
-	aux16 = 0;	/*QUITAR CUANDO FRAGMENTACION*/
-	if(memcpy(datagrama+pos, &aux16, sizeof(uint16_t)) == NULL) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;		
-	}
-	pos+=sizeof(uint16_t);
-	
-	/*Introducimos en el datagrama el campo Tiempo de vida, maria dice que da igual*/
-	aux8= 0b10000000;		/*Hemos puesto 128 bc ositos*/
-	if(memcpy(datagrama+pos,&aux8,sizeof(uint8_t)) == NULL) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;		
-	}
-	pos+=sizeof(uint8_t);
 
-	/*Introducimos en el datagrama el campo Protocolo */
-	aux8= protocolo_superior;
-	if(memcpy(datagrama+pos,&aux8,sizeof(uint8_t)) == NULL) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;
-	}
-	pos+=sizeof(uint8_t);
-
-	/*Introducimos en el datagrama el campo suma de control de cabecera*/
-	posCheckSum = datagrama+pos;
-	aux16 = htons(0);											/*Se rellena a 0's y al final de la funcion se calcula*/
-	if(memcpy(datagrama+pos,&aux16,sizeof(uint16_t)) == NULL) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;
-	}
-	pos+=sizeof(uint16_t);
-
-	/*Introducimos en el datagrama la direccion de origen*/
-	if(memcpy(datagrama+pos,IP_origen,sizeof(uint8_t)*4) == NULL) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;
-	}
-	pos+=sizeof(uint32_t);
-
-	/*Introducimos en el datagrama la direccion de destino*/
-	if(memcpy(datagrama+pos,IP_destino,sizeof(uint8_t)*4) == NULL) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;		
-	}
-	pos+=sizeof(uint32_t);
-
-	/*No tenemos datos ni relleno*/
-
-	/*Realizamos la solicitud ARP*/
-	if(obtenerMascaraInterface(interface, mascara) == ERROR){		/*Obtenemos la mascara que vamos a usar*/
-		printf("ERROR en obtenerMascaraInterface\n");
-		return ERROR;
-	}
-
-	if( aplicarMascara(IP_origen, mascara, 4, IP_rango_origen) == ERROR){		/*Aplicamos la mascara a la ip_origen*/
-		printf("Error aplicando la mascara a la ip\n");
-		return ERROR;
-	}
-
-	if( aplicarMascara(IP_destino, mascara, 4, IP_rango_destino) == ERROR){		/*Aplicamos la mascara a la ip_destino*/
-		printf("Error aplicando la mascara\n");
-		return ERROR;
-	}
-
-	/*Comparamos las IP por octectos, porque aunque, en nuestro caso no haya que hacerlo (se puede comparar a lo bruto), si hay un caso en que no son 4Bytes(IPv4) como IPv6
-	tambien funciona :) */
-	for(i=0; i<IP_ALEN; i++) {						
-		if(IP_rango_destino[i] != IP_rango_origen[i] && flag == 0){
-			flag = 1;
+		if(memcpy(datagrama+pos, &aux16, sizeof(uint16_t)) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;		
 		}
-	}
+		pos+=sizeof(uint16_t);
+		
+		/*Introducimos en el datagrama el campo Tiempo de vida, maria dice que da igual*/
+		aux8= 0b10000000;		/*Hemos puesto 128 bc ositos*/
+		if(memcpy(datagrama+pos,&aux8,sizeof(uint8_t)) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;		
+		}
+		pos+=sizeof(uint8_t);
 
-	/*Mandamos la solicitud ARP*/
-	if(flag == 0) {		/*Caso en el que el retorno de las mascaras es igual, por lo tanto se pasa la ip_destino, que esta en la misma subred*/
-		if(solicitudARP(interface, IP_destino, ipdatos.ETH_destino) == ERROR ){		/*se realiza la solicitud arp para la ip de destino*/
-			printf("Error realizando la solicitud ARP a la ip destino\n");
+		/*Introducimos en el datagrama el campo Protocolo */
+		aux8= protocolo_superior;
+		if(memcpy(datagrama+pos,&aux8,sizeof(uint8_t)) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 			return ERROR;
 		}
-	} else {			/*Caso en el que el retorno de las mascaras es diferente, por lo tanto se le pasa la ip del router, porque la ip_dest no esta en la subred*/
-		if (obtenerGateway(interface, &aux8) == ERROR){		/*Se obtiene la ip del router*/
-			printf("Error obteniendo la gateway\n");
+		pos+=sizeof(uint8_t);
+
+		/*Introducimos en el datagrama el campo suma de control de cabecera*/
+		posCheckSum = datagrama+pos;
+		aux16 = htons(0);											/*Se rellena a 0's y al final de la funcion se calcula*/
+		if(memcpy(datagrama+pos,&aux16,sizeof(uint16_t)) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 			return ERROR;
 		}
-		if(solicitudARP(interface, &aux8, ipdatos.ETH_destino) == ERROR){   	/*se realiza la solicitud arp para la ip del router*/				/* OJO CUIDAO */
-			printf("Error realizando la solicitud ARP a la ip del router\n");
+		pos+=sizeof(uint16_t);
+
+		/*Introducimos en el datagrama la direccion de origen*/
+		if(memcpy(datagrama+pos,IP_origen,sizeof(uint8_t)*4) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 			return ERROR;
 		}
-	}
+		pos+=sizeof(uint32_t);
 
-	/* Rellenamos el campo Checksum */
-	if(calcularChecksum(datagrama, pos, (uint8_t*)&aux16) == ERROR){
-		printf("Error al calcular el checksum de ICMP\n");
-		return ERROR;
-	}
-	/* volvemos al campo checksum */
-	if(memcpy(posCheckSum, &aux16, sizeof(uint16_t)) == NULL) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;
-	}
+		/*Introducimos en el datagrama la direccion de destino*/
+		if(memcpy(datagrama+pos,IP_destino,sizeof(uint8_t)*4) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;		
+		}
+		pos+=sizeof(uint32_t);
 
-	// Encapsulamos ICMP
-	if( memcpy(datagrama+pos, segmento, longitud) == NULL ) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;
-	}
+		/*No tenemos datos ni relleno*/
+
+		/*Realizamos la solicitud ARP*/
+		if(obtenerMascaraInterface(interface, mascara) == ERROR){		/*Obtenemos la mascara que vamos a usar*/
+			printf("ERROR en obtenerMascaraInterface\n");
+			return ERROR;
+		}
+
+		if( aplicarMascara(IP_origen, mascara, 4, IP_rango_origen) == ERROR){		/*Aplicamos la mascara a la ip_origen*/
+			printf("Error aplicando la mascara a la ip\n");
+			return ERROR;
+		}
+
+		if( aplicarMascara(IP_destino, mascara, 4, IP_rango_destino) == ERROR){		/*Aplicamos la mascara a la ip_destino*/
+			printf("Error aplicando la mascara\n");
+			return ERROR;
+		}
+
+		/*Comparamos las IP por octectos, porque aunque, en nuestro caso no haya que hacerlo (se puede comparar a lo bruto), si hay un caso en que no son 4Bytes(IPv4) como IPv6
+		tambien funciona :) */
+		for(i=0; i<IP_ALEN; i++) {						
+			if(IP_rango_destino[i] != IP_rango_origen[i] && flag == 0){
+				flag = 1;
+			}
+		}
+
+		/*Mandamos la solicitud ARP*/
+		if(flag == 0) {		/*Caso en el que el retorno de las mascaras es igual, por lo tanto se pasa la ip_destino, que esta en la misma subred*/
+			if(solicitudARP(interface, IP_destino, ipdatos.ETH_destino) == ERROR ){		/*se realiza la solicitud arp para la ip de destino*/
+				printf("Error realizando la solicitud ARP a la ip destino\n");
+				return ERROR;
+			}
+		} else {			/*Caso en el que el retorno de las mascaras es diferente, por lo tanto se le pasa la ip del router, porque la ip_dest no esta en la subred*/
+			if (obtenerGateway(interface, &aux8) == ERROR){		/*Se obtiene la ip del router*/
+				printf("Error obteniendo la gateway\n");
+				return ERROR;
+			}
+			if(solicitudARP(interface, &aux8, ipdatos.ETH_destino) == ERROR){   	/*se realiza la solicitud arp para la ip del router*/				/* OJO CUIDAO */
+				printf("Error realizando la solicitud ARP a la ip del router\n");
+				return ERROR;
+			}
+		}
+
+		/* Rellenamos el campo Checksum */
+		if(calcularChecksum(datagrama, pos, (uint8_t*)&aux16) == ERROR){
+			printf("Error al calcular el checksum de ICMP\n");
+			return ERROR;
+		}
+		/* volvemos al campo checksum */
+		if(memcpy(posCheckSum, &aux16, sizeof(uint16_t)) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;
+		}
+
+		// Encapsulamos ICMP
+		if( memcpy(datagrama+pos, segmento, longitud) == NULL ) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;
+		}
 	
-	/*}*/
+	}
 
 	//TODO A implementar el datagrama y fragmentación, asi como control de tamano segun bit DF
 	return protocolos_registrados[protocolo_inferior](datagrama,longitud+pos,pila_protocolos,&ipdatos);
