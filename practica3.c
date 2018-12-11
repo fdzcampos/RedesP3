@@ -379,6 +379,7 @@ uint8_t moduloUDP(uint8_t* mensaje, uint32_t longitud, uint16_t* pila_protocolos
 	}
 	pos+=sizeof(uint16_t);
 
+	/* encapsulacion */
 	if( memcpy(segmento+pos, mensaje, longitud) == NULL ) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;
@@ -463,12 +464,14 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		printf("DEBUGUEANDO %d\n", ipdatos.bit_DF);
 		/*Introducimos en el datagrama el campo Flags (reservado = 0, df, last fragment = 0) y la Posicion*/
 		if( ipdatos.bit_DF == 0 ){	/*Queremos fragmentar, no hemos puesto el -d*/
-			printf("XD\n");
 			if(obtenerMTUInterface(interface, &MTUaux) == ERROR) {
 				printf("Se ha producido un error obteniendo la mtu interface\n");
 				return ERROR;
 			}
+			printf("LA MTU ES: %d\n", MTUaux);
+			printf("LA LONGITUD+20 ES: %d\n", longitud+20);
 			if(MTUaux < longitud+20) {
+				printf("XD\n");
 				posicionaux = (longitud+20)/(MTUaux);
 				aux16 = 0b0000000000000000 || (uint16_t) i;
 
