@@ -587,13 +587,19 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		/* Calculamos los Flags (reservado = 0, df, last fragment = 0) y la Posicion/offset */
 		if( ipdatos.bit_DF == 0 ){	/*Queremos fragmentar, no hemos puesto el -d*/			
 
-			
-			aux16 = 0b0010000000000000 | (uint16_t) ((i*tam_datos_real)/8);
+			//Aqui metemos el valor del offset pero los flags se mantienen a 0, ahora los definimos
+			aux16 = (i*tam_datos_real)/8;
+			aux16 = aux16 & 0x1FFF;
+			//metemos los flags
+			aux16 = aux16 | 0x2000;
+
+			/*aux16 = 0b0010000000000000 | (uint16_t) ((i*tam_datos_real)/8);
 			printf("OFFSET:%"PRIu16"\n",(uint16_t) ((i*tam_datos_real)/8));
-			printf("aux:%02X\n",aux16);
+			printf("aux:%02X\n",aux16);*/
 			aux16 = htons(aux16);
 
 		}else{		/*No queremos fragmentar, hemos puesto el -d*/
+			/*cuidado*/
 			aux16 = htons(0b0100000000000000);
 		}
 
@@ -605,7 +611,9 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 			return ERROR;		
 		}
 		//pos+=sizeof(uint16_t);
-
+		
+		mostrarHex(datagrama, 1500);
+		printf("POSICION:%d\n", pos);
 		/* Rellenamos el campo Checksum */
 		if(calcularChecksum(datagrama, pos, (uint8_t*)&aux16) == ERROR){
 			printf("Error al calcular el checksum de ICMP\n");
@@ -633,14 +641,18 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		i++; /* incrementamos para los offset */
 	}
 
-	/* CASO EN QUE NO YA HAGA FALTA LA FRAGMENTACION */
+	/* CASO EN QUE YA NO HAGA FALTA LA FRAGMENTACION */
 
 	if( flagFrag == 0 ){
 		aux16 = htons(0);
 		acumulador = 0;
-	}else{
-		printf("INES %d, %d, %d\n",i, tam_datos_real,  i*(tam_datos_real)/8);
-		aux16 = 0b0000000000000000 | (uint16_t) ((i*tam_datos_real)/8);			/* flag de last fragment */
+	}else{	/*Caso en el que es el ultimo fragmento*/
+
+		aux16 = i*(tam_datos_real)/8;
+		aux16 = aux16 & 0x1FFF;
+
+		//printf("INES %d, %d, %d\n",i, tam_datos_real,  i*(tam_datos_real)/8);
+		//aux16 = 0b0000000000000000 | (uint16_t) ((i*tam_datos_real)/8);			/* flag de last fragment */
 		restante = longitud - acumulador ;					/* deberia ser 0 */
 		enviados = longitud - acumulador ;
 		acumulador += enviados ;					/* acumulador es el total de lo que he enviado ya */
