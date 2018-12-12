@@ -571,11 +571,11 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		posicionaux++;						/* al ser un int sino trunca */
 	}
 
-		
 	restante = longitud;
 	i=0;
 	while( tam_datos < restante ){		
 		flagFrag=1;
+
 		aux16 = htons((uint16_t)tam_datos_real+20);		
 		if(memcpy(datagrama+2,&aux16,sizeof(uint16_t)) == NULL) {
 			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
@@ -607,7 +607,6 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 			return ERROR;		
 		}
 		
-		mostrarHex(datagrama, pos);
 		/* Rellenamos el campo Checksum */
 		if(calcularChecksum(datagrama, pos, (uint8_t*)&aux16) == ERROR){
 			printf("Error al calcular el checksum de ICMP\n");
@@ -618,7 +617,6 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 			return ERROR;
 		}
-		mostrarHex(datagrama, pos);
 		
 		restante = restante - tam_datos_real;			/* restante es lo que me queda por enviar, la cabecera no cuenta */
 		enviados = tam_datos_real+20 ;					/* enviados es lo que he enviado en el ultimo paquete */
@@ -630,36 +628,48 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		}
 		acumulador += enviados ;					/* acumulador es el total de lo que he enviado ya */
 
+		/* enviamos el fragmento */
 		if(protocolos_registrados[protocolo_inferior](datagrama,enviados,pila_protocolos,&ipdatos)==ERROR)
 			return ERROR;
 		
+		/* para que recalcule bien los checksums de los fragmentos posteriores lo reseteamos a 0 */
+		aux16=0;
+		if(memcpy(posCheckSum, &aux16, sizeof(uint16_t)) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;
+		}
+
 		i++; /* incrementamos para los offset */
 	}
 
 	/* CASO EN QUE YA NO HAGA FALTA LA FRAGMENTACION */
 
-	if( flagFrag == 0 ){
+	if( flagFrag == 0 ){			/* el paquete nunca ha hecho falta fragmentarlo, taminicialpaquete < mtu */
 		aux16 = htons(0);
 		acumulador = 0;
-	}else{	/*Caso en el que es el ultimo fragmento*/
+	}else{							/*Caso en el que es el ultimo fragmento*/
 
 		aux16 = i*(tam_datos_real)/8;
 		aux16 = aux16 & 0x1FFF;
 
 		//printf("INES %d, %d, %d\n",i, tam_datos_real,  i*(tam_datos_real)/8);
 		//aux16 = 0b0000000000000000 | (uint16_t) ((i*tam_datos_real)/8);			/* flag de last fragment */
-		restante = longitud - acumulador ;					/* deberia ser 0 */
+		restante = longitud - acumulador ;					
 		enviados = longitud - acumulador ;
-		acumulador += enviados ;					/* acumulador es el total de lo que he enviado ya */
 		aux16 = htons(aux16);
 	}
+
 	/* Introducimos en el datagrama el campo Flags (reservado = 0, df, last fragment = 0) y la Posicion */
 	if(memcpy(posFlagLen, &aux16, sizeof(uint16_t)) == NULL) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;		
 	}
 
-	// rellenamos la longitud 
+	// printf("VALOR DE RESTANTE: %d\n",restante );
+	// printf("VALOR DE ENVIADOS: %d\n",enviados );
+	// printf("VALOR DE ACUMULADOR: %d\n", acumulador );
+
+	/* Rellenamos la longitud */
 	aux16 = htons((uint16_t)restante+20);		
 	if(memcpy(datagrama+2,&aux16,sizeof(uint16_t)) == NULL) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
@@ -677,7 +687,7 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		return ERROR;
 	}
 
-	// Encapsulamos ICMP
+	/* Encapsulamos ICMP */
 	if(flagFrag == 0) {
 		if( memcpy(datagrama+pos, segmento, longitud) == NULL ) {
 			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
@@ -685,12 +695,13 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		}	
 	} else {
 		if( memcpy(datagrama+pos, segmento+acumulador, enviados) == NULL ) {
-		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
-		return ERROR;
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;
 		}
+		acumulador += enviados;
 	}
 
-	return protocolos_registrados[protocolo_inferior](datagrama,restante+pos,pila_protocolos,&ipdatos);;
+	return protocolos_registrados[protocolo_inferior](datagrama,restante+pos,pila_protocolos,&ipdatos);
 }
 
 
@@ -724,7 +735,6 @@ uint8_t moduloETH(uint8_t* datagrama, uint32_t longitud, uint16_t* pila_protocol
 		return ERROR;
 	}
 
-	printf("MAC DESTINO: %02X %02X \n",((Parametros*)parametros)->ETH_destino[0],((Parametros*)parametros)->ETH_destino[1]);
 	// Rellenamos el campo direccion ethernet destino
 	if(memcpy(trama+pos,((Parametros*)parametros)->ETH_destino, sizeof(uint8_t)*ETH_ALEN) == NULL) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
