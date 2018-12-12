@@ -639,21 +639,21 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		aux16 = htons(0);
 		acumulador = 0;
 	}else{
+		printf("INES %d, %d, %d\n",i, tam_datos_real,  i*(tam_datos_real)/8);
 		aux16 = 0b0000000000000000 | (uint16_t) ((i*tam_datos_real)/8);			/* flag de last fragment */
 		restante = longitud - acumulador ;					/* deberia ser 0 */
 		enviados = longitud - acumulador ;
 		acumulador += enviados ;					/* acumulador es el total de lo que he enviado ya */
+		aux16 = htons(aux16);
 	}
 	/* Introducimos en el datagrama el campo Flags (reservado = 0, df, last fragment = 0) y la Posicion */
 	if(memcpy(posFlagLen, &aux16, sizeof(uint16_t)) == NULL) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;		
 	}
-	//pos+=sizeof(uint16_t);
 
-
+	// rellenamos la longitud 
 	aux16 = htons((uint16_t)restante+20);		
-									/* PREGUNTAR: ltotal = lcabecera (20) + ldatagrama */
 	if(memcpy(datagrama+2,&aux16,sizeof(uint16_t)) == NULL) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;
@@ -671,9 +671,16 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 	}
 
 	// Encapsulamos ICMP
-	if( memcpy(datagrama+pos, segmento+acumulador, enviados) == NULL ) {
+	if(flagFrag == 0) {
+		if( memcpy(datagrama+pos, segmento, longitud) == NULL ) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;
+		}	
+	} else {
+		if( memcpy(datagrama+pos, segmento+acumulador, enviados) == NULL ) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;
+		}
 	}
 
 	return protocolos_registrados[protocolo_inferior](datagrama,restante+pos,pila_protocolos,&ipdatos);;
