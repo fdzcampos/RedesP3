@@ -23,6 +23,7 @@ uint16_t ID=1;		//Identificador IP
 uint16_t ID_ICMP=1; //Campo identificador ICMP
 uint16_t ID_IP=1; //Campo identificador IP
 uint16_t NSEQ_ICMP=0;  //Numero de secuencia ICMP
+char flag_mostrar = 0;
 
 #define INTERFAZ enp8s0
 void handleSignal(int nsignal){
@@ -45,7 +46,7 @@ int main(int argc, char **argv){
 
 	int long_index=0;
 	char opt;
-	char flag_iface = 0, flag_ip = 0, flag_port = 0, flag_file = 0, bit_DF = 0, flag_mostrar = 0;
+	char flag_iface = 0, flag_ip = 0, flag_port = 0, flag_file = 0, bit_DF = 0;
 
 	static struct option options[] = {
 		{"if",required_argument,0,'1'},
@@ -411,6 +412,7 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 	uint8_t mascara[IP_ALEN],IP_rango_origen[IP_ALEN]={0},IP_rango_destino[IP_ALEN]={0};
 	uint8_t *posCheckSum = NULL;
 	uint8_t *posFlagLen = NULL;
+	uint8_t* posLong = NULL;
 	uint16_t aux16;
 	uint16_t MTUaux;
 	uint16_t posicionaux = 0;
@@ -458,6 +460,7 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;
 	}
+	posLong = datagrama+pos;
 	pos+=sizeof(uint16_t);
 
 	/*Introducimos en el datagrama el campo Identificacion*/
@@ -535,7 +538,7 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		return ERROR;
 	}
 
-	/*Comparamos las IP por octectos, porque aunque, en nuestro caso no haya que hacerlo (se puede comparar a lo bruto), si hay un caso en que no son 4Bytes(IPv4) como IPv6
+	/*Comparamos las IP por octectos, porque aunque en nuestro caso no haya que hacerlo (se puede comparar a lo bruto), si hay un caso en que no son 4Bytes(IPv4) como IPv6
 	tambien funciona :) */
 	for(i=0; i<IP_ALEN; i++) {						
 		if(IP_rango_destino[i] != IP_rango_origen[i] && flag == 0){
@@ -577,7 +580,7 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		flagFrag=1;
 
 		aux16 = htons((uint16_t)tam_datos_real+20);		
-		if(memcpy(datagrama+2,&aux16,sizeof(uint16_t)) == NULL) {
+		if(memcpy(posLong,&aux16,sizeof(uint16_t)) == NULL) {
 			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 			return ERROR;
 		}
@@ -597,8 +600,9 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 			aux16 = htons(aux16);
 
 		}else{		/*No queremos fragmentar, hemos puesto el -d*/
-			/*cuidado*/
 			aux16 = htons(0b0100000000000000);
+			printf("El paquete no se puede fragmentar porque el usuario ha incluido la opcion -d y la MTU es demasiado pequenya\n");
+			return ERROR;
 		}
 		
 		/* Introducimos en el datagrama el campo Flags (reservado = 0, df, last fragment = 0) y la Posicion */
@@ -626,7 +630,7 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 			return ERROR;
 		}
-		acumulador += enviados ;					/* acumulador es el total de lo que he enviado ya */
+		acumulador += tam_datos_real ;					/* acumulador es el total de lo que he enviado ya SIN LAS CABECERAS */
 
 		/* enviamos el fragmento */
 		if(protocolos_registrados[protocolo_inferior](datagrama,enviados,pila_protocolos,&ipdatos)==ERROR)
@@ -635,6 +639,13 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		/* para que recalcule bien los checksums de los fragmentos posteriores lo reseteamos a 0 */
 		aux16=0;
 		if(memcpy(posCheckSum, &aux16, sizeof(uint16_t)) == NULL) {
+			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
+			return ERROR;
+		}
+
+		/* Reseteamos el mensaje */
+		aux16 = 0;
+		if( memcpy(datagrama+pos, &aux16 , enviados) == NULL ) {
 			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 			return ERROR;
 		}
@@ -665,13 +676,9 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 		return ERROR;		
 	}
 
-	// printf("VALOR DE RESTANTE: %d\n",restante );
-	// printf("VALOR DE ENVIADOS: %d\n",enviados );
-	// printf("VALOR DE ACUMULADOR: %d\n", acumulador );
-
 	/* Rellenamos la longitud */
 	aux16 = htons((uint16_t)restante+20);		
-	if(memcpy(datagrama+2,&aux16,sizeof(uint16_t)) == NULL) {
+	if(memcpy(posLong,&aux16,sizeof(uint16_t)) == NULL) {
 		printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 		return ERROR;
 	}
@@ -698,7 +705,6 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 			return ERROR;
 		}
-		acumulador += enviados;
 	}
 
 	return protocolos_registrados[protocolo_inferior](datagrama,restante+pos,pila_protocolos,&ipdatos);
@@ -782,7 +788,7 @@ uint8_t moduloETH(uint8_t* datagrama, uint32_t longitud, uint16_t* pila_protocol
 			return ERROR;
 		}
 	}
-	
+
 	//Almacenamos la salida por cuestiones de debugging [...]
 	gettimeofday(&time,NULL);
     hdr.ts.tv_sec = time.tv_sec;
@@ -790,6 +796,10 @@ uint8_t moduloETH(uint8_t* datagrama, uint32_t longitud, uint16_t* pila_protocol
     hdr.len = longitud+pos;
     hdr.caplen = longitud+pos;
     pcap_dump((u_char *)pdumper,&hdr,trama);
+
+    if( flag_mostrar ){
+    	mostrarHex(trama, longitud);
+    }
 
 	return OK;
 }
