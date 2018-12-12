@@ -562,9 +562,9 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 
 	/* numero de fragmentos que vamos a tener, necesario para la encapsulacion de ip */
 	uint16_t tam_datos=(MTUaux-20);
-	printf("Tam datos: %"PRIu16"\n",tam_datos);
+	// printf("Tam datos: %"PRIu16"\n",tam_datos);
 	uint16_t tam_datos_real=tam_datos-(tam_datos%8);
-	printf("Tam datos real %"PRIu16"\n",tam_datos_real);
+	// printf("Tam datos real %"PRIu16"\n",tam_datos_real);
 
 	posicionaux = (longitud)/(tam_datos_real); 
 	if( (longitud) % tam_datos_real != 0 ){
@@ -577,8 +577,6 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 	while( tam_datos < restante ){		
 		flagFrag=1;
 		aux16 = htons((uint16_t)tam_datos_real+20);		
-		printf("	Longitud %"PRIu16"\n",tam_datos_real+20);
-									/* PREGUNTAR: ltotal = lcabecera (20) + ldatagrama */
 		if(memcpy(datagrama+2,&aux16,sizeof(uint16_t)) == NULL) {
 			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 			return ERROR;
@@ -602,18 +600,14 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 			/*cuidado*/
 			aux16 = htons(0b0100000000000000);
 		}
-
-	
 		
 		/* Introducimos en el datagrama el campo Flags (reservado = 0, df, last fragment = 0) y la Posicion */
 		if(memcpy(posFlagLen, &aux16, sizeof(uint16_t)) == NULL) {
 			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 			return ERROR;		
 		}
-		//pos+=sizeof(uint16_t);
 		
-		mostrarHex(datagrama, 1500);
-		printf("POSICION:%d\n", pos);
+		mostrarHex(datagrama, pos);
 		/* Rellenamos el campo Checksum */
 		if(calcularChecksum(datagrama, pos, (uint8_t*)&aux16) == ERROR){
 			printf("Error al calcular el checksum de ICMP\n");
@@ -624,6 +618,7 @@ uint8_t moduloIP(uint8_t* segmento, uint32_t longitud, uint16_t* pila_protocolos
 			printf("Error haciendo el memcpy %s %d\n", __FILE__,__LINE__);
 			return ERROR;
 		}
+		mostrarHex(datagrama, pos);
 		
 		restante = restante - tam_datos_real;			/* restante es lo que me queda por enviar, la cabecera no cuenta */
 		enviados = tam_datos_real+20 ;					/* enviados es lo que he enviado en el ultimo paquete */
