@@ -1,23 +1,23 @@
 Autores: Inés Fernández Campos y Javier Encinas Cortés
 
-###### MODIFICAR PARA ENTREGA PRACTICA 3 #############################
-Comentario: En caso de que un campo no coincida con el filtro, se imprimirá ese campo y acto seguido se dejará de imprimir el resto de campos de ese nivel y de los siguientes.
+Comentario: En caso de que el tamaño del paquete a enviar sea mayor que el tamaño de MTU y
+		el usuario haya incluido la opción de ejecución -d, se notifica por pantalla del error y se finaliza el envío.
 
 Criterios de evaluacion:
 	- Normativa de entrega cumplida en su totalidad: Realizado, varias lecturas del enunciado.
 
-	- Impresión información de nivel 2: Realizado.
-	
-	- Impresión información pertinentes de nivel 3: Realizado.
+	- ICMP y echo/ping dentro de la red local y comprobación con Wireshark: Realizado.
 
-	- Impresión campo desplazamiento/offset: Realizado.
-	
-	- Impresión información de nivel 4: Realizado.
+	- ICMP y echo/ping en un equipo no adyacente y comprobación con Wireshark: Realizado.
 
-	- Captura desde interfaz de red: Realizado.
+	- Formación correcta de un paquete UDP dentro de la red local y comprobación con Wireshark: Realizado.
 
-	- No analizar tráfico cruzado: Realizado, comprobación de que el número de protocolo es o 6 o 17.
+	- Envío y Recepción de un paquete UDP en un equipo no adyacente (externo a la LAN) y comprobación con Wireshark: Realizado.
 
-	- Implementación funcionalidad de filtrado: Realizado, se ha incluido una variable global que se usa de flag para comprobar la existencia de los filtros de IP origen o destino.
+	- Envío y Recepción de paquetes UDP que hayan sufrido fragmentación y comprobación con Wireshark: Realizado.
 
-	- Detección de filtros: Realizado, se imprimen por pantalla los campos deseados hasta que uno no coincide.
+	- Implementación del bit DF y comprobación con Wireshark: Realizado. Se lleva a cabo la actualización de los flags.
+
+	- Lectura de datos para paquetes UDP desde archivo y comprobación con Wireshark: Realizado. Se usa el fichero "bigasstext"
+
+	- Impresión de tramas enviadas por pantalla en hexadecimal: Realizado. Se imprime cuando se ejecuta el programa con la opción -m.
